@@ -3,19 +3,172 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ブキステッカー進捗管理</title>
-  <link rel="stylesheet" href="style.css" />
+  <title>ブキステッカー進捗管理ツール</title>
+  <style>
+    body {
+      font-family: "Noto Sans JP", sans-serif;
+      background-color: #f2f4f5;
+      color: #222;
+      margin: 0;
+      padding: 0 1rem;
+    }
+    h1 {
+      text-align: center;
+      margin-top: 1rem;
+    }
+    h2 {
+      margin-top: 2rem;
+      border-left: 6px solid #4caf50;
+      padding-left: 0.5rem;
+    }
+    .category {
+      background: white;
+      border-radius: 8px;
+      padding: 0.5rem 1rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    .weapon {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 2px 0;
+    }
+    .progress-bar {
+      height: 20px;
+      background: #ddd;
+      border-radius: 10px;
+      overflow: hidden;
+      margin: 0.5rem 0 1rem 0;
+    }
+    .progress-inner {
+      height: 100%;
+      background: #4caf50;
+      width: 0%;
+      transition: width 0.3s ease;
+    }
+    #progress {
+      font-weight: bold;
+      text-align: center;
+      margin-bottom: 0.5rem;
+    }
+    .filter-btns {
+      text-align: center;
+      margin: 1rem 0;
+    }
+    .filter-btns button {
+      margin: 0 0.3rem;
+      padding: 0.4rem 0.8rem;
+      border: none;
+      border-radius: 6px;
+      background: #eee;
+      cursor: pointer;
+    }
+    .filter-btns button.active {
+      background: #4caf50;
+      color: white;
+    }
+  </style>
 </head>
+
 <body>
   <h1>ブキステッカー進捗管理ツール</h1>
-  <div id="overall-progress" class="progress-container">
-    <span>全体進捗</span>
-    <div class="progress-bar"><div id="overall-bar"></div></div>
-    <span id="overall-percent"></span>
-  </div>
-  <div id="weapon-container"></div>
 
-  <script src="weapons.js"></script>
-  <script src="script.js"></script>
+  <div id="progress"></div>
+  <div class="progress-bar"><div class="progress-inner" id="progress-bar-inner"></div></div>
+
+  <div class="filter-btns">
+    <button data-filter="all" class="active">すべて表示</button>
+    <button data-filter="unchecked">未チェックのみ</button>
+    <button data-filter="checked">チェック済のみ</button>
+  </div>
+
+  <div id="weapon-list"></div>
+
+  <script>
+  // ====== ブキリスト（Ver.10.1.0） ======
+  const weaponsByCategory = {
+    "シューター": [".52ガロン",".52ガロンデコ",".96ガロン",".96ガロンデコ","H3リールガン","H3リールガンD","L3リールガン","L3リールガンD","N-ZAP85","N-ZAP89","もみじシューター","わかばシューター","オクタシューターレプリカ","オーダーシューターレプリカ","シャープマーカー","シャープマーカーネオ","ジェットスイーパー","ジェットスイーパーカスタム","スプラシューター","スプラシューターコラボ","スペースシューター","スペースシューターコラボ","ヒーローシューターレプリカ","プライムシューター","プライムシューターコラボ","プロモデラーMG","プロモデラーRG","ボトルガイザー","ボトルガイザーフォイル","ボールドマーカー","ボールドマーカーネオ","ジェットスイーパーCOBR","H3リールガンSNAK","プロモデラー彩",".96ガロン爪","L3リールガン箔","シャープマーカーGECK","プライムシューターFRZN","スプラシューター煌"],
+    "ローラー": ["オーダーローラーレプリカ","カーボンローラー","カーボンローラーデコ","スプラローラー","スプラローラーコラボ","ダイナモローラー","ダイナモローラーテスラ","ワイドローラー","ワイドローラーコラボ","ヴァリアブルローラー","ヴァリアブルローラーフォイル","ワイドローラー惑","ダイナモローラー冥","カーボンローラーANGL"],
+    "チャージャー": ["4Kスコープカスタム","14式竹筒銃・乙","14式竹筒銃・甲","R-PEN_5B","R-PEN_5H","オーダーチャージャーレプリカ","スクイックリンα","スクイックリンβ","スプラスコープ","スプラスコープコラボ","スプラチャージャー","スプラチャージャーコラボ","ソイチューバー","ソイチューバーカスタム","リッター4K","リッター4Kカスタム","4Kスコープ","スプラチャージャーFRST","スプラスコープFRST"],
+    "ブラスター": ["Rブラスターエリートデコ","S-BLAST91","S-BLAST92","オーダーブラスターレプリカ","クラッシュブラスター","クラッシュブラスターネオ","ノヴァブラスター","ノヴァブラスターネオ","ホットブラスター","ホットブラスターカスタム","ラピッドブラスター","ラピッドブラスターデコ","ロングブラスター","ロングブラスターカスタム","Rブラスターエリート","RブラスターエリートWNTR","ホットブラスター艶"],
+    "スピナー": ["スプラスピナー","スプラスピナーコラボ","ノーチラス47","ノーチラス79","ハイドラント","ハイドラントカスタム","バレルスピナー","バレルスピナーデコ","イグザミナー","イグザミナー・ヒュー","オーダースピナーレプリカ","クーゲルシュライバー","クーゲルシュライバーヒュー","ハイドラント圧","スプラスピナーPYTN"],
+    "マニューバー": ["オーダーマニューバーレプリカ","ガエンFF","ガエンFFカスタム","クアッドホッパーブラック","クアッドホッパーホワイト","ケルビン525","ケルビン525デコ","スパッタリー","スパッタリーヒュー","スプラマニューバー","スプラマニューバーコラボ","デュアルスイーパー","デュアルスイーパーカスタム","デュアルスイーパー蹄","スパッタリーOWL","スプラマニューバー耀"],
+    "ワイパー": ["オーダーワイパーレプリカ","ジムワイパー","ジムワイパーヒュー","デンタルワイパースミ","デンタルワイパーミント","ドライブワイパー","ドライブワイパーデコ","ジムワイパー封","ドライブワイパーRUST"],
+    "ストリンガー": ["フルイドVカスタム","LACT-450","LACT-450デコ","オーダーストリンガーレプリカ","トライストリンガー","トライストリンガーコラボ","フルイドV","トライストリンガー燈","LACT-450MILK"],
+    "シェルター": ["24式張替傘・乙","24式張替傘・甲","オーダーシェルターレプリカ","キャンピングシェルター","キャンピングシェルターソレーラ","スパイガジェット","スパイガジェットソレーラ","パラシェルター","パラシェルターソレーラ","スパイガジェット繚","キャンピングシェルターCREM"],
+    "フデ": ["パブロ","パブロヒュー","フィンセント","フィンセントヒュー","ホクサイ","ホクサイヒュー","オーダーブラシレプリカ","フィンセントBRNZ","ホクサイ彗"],
+    "スロッシャー": ["エクスプロッシャー","エクスプロッシャーカスタム","オーダースロッシャーレプリカ","オーバーフロッシャー","オーバーフロッシャーデコ","スクリュースロッシャー","スクリュースロッシャーネオ","バケットスロッシャー","バケットスロッシャーデコ","ヒッセン","ヒッセンヒュー","モップリン","モップリンD","モップリン角","ヒッセンASH"]
+  };
+
+  // ====== ロジック部分 ======
+  const weaponListEl = document.getElementById("weapon-list");
+  const progressEl = document.getElementById("progress");
+  const progressInner = document.getElementById("progress-bar-inner");
+  let saved = JSON.parse(localStorage.getItem("stickers") || "{}");
+  let currentFilter = "all";
+
+  function updateProgress() {
+    let total = 0, got = 0;
+    for (const list of Object.values(weaponsByCategory)) {
+      total += list.length;
+      for (const name of list) if (saved[name]) got++;
+    }
+    const percent = total ? Math.round((got / total) * 100) : 0;
+    progressEl.textContent = `全体進捗: ${got}/${total} (${percent}%)`;
+    progressInner.style.width = percent + "%";
+  }
+
+  function renderList() {
+    weaponListEl.innerHTML = "";
+    for (const [category, list] of Object.entries(weaponsByCategory)) {
+      const h2 = document.createElement("h2");
+      h2.textContent = category;
+      weaponListEl.appendChild(h2);
+
+      const container = document.createElement("div");
+      container.className = "category";
+
+      for (const name of list) {
+        const isChecked = !!saved[name];
+        if (currentFilter === "unchecked" && isChecked) continue;
+        if (currentFilter === "checked" && !isChecked) continue;
+
+        const div = document.createElement("div");
+        div.className = "weapon";
+
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.checked = isChecked;
+        checkbox.addEventListener("change", () => {
+          saved[name] = checkbox.checked;
+          localStorage.setItem("stickers", JSON.stringify(saved));
+          updateProgress();
+          renderList();
+        });
+
+        const label = document.createElement("span");
+        label.textContent = name;
+
+        div.appendChild(checkbox);
+        div.appendChild(label);
+        container.appendChild(div);
+      }
+
+      weaponListEl.appendChild(container);
+    }
+  }
+
+  document.querySelectorAll(".filter-btns button").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".filter-btns button").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      currentFilter = btn.getAttribute("data-filter");
+      renderList();
+    });
+  });
+
+  updateProgress();
+  renderList();
+  </script>
 </body>
 </html>
