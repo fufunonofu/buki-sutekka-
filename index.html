@@ -1,119 +1,166 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ブキステッカー進捗管理ツール</title>
   <style>
+    /* 🎨 スプラトゥーン風フォント */
+    @font-face {
+      font-family: "SplatoonFont";
+      src: url("s2font.ttf") format("truetype");
+      font-display: swap;
+    }
+
     body {
-      font-family: "Noto Sans JP", sans-serif;
+      font-family: "SplatoonFont", "Noto Sans JP", sans-serif;
       background-color: #f2f4f5;
       color: #222;
       margin: 0;
-      padding: 0 1rem;
+      padding: 1rem;
     }
+
+    h1, h2, button {
+      font-family: "SplatoonFont", "Noto Sans JP", sans-serif;
+    }
+
     h1 {
       text-align: center;
-      margin-top: 1rem;
+      font-size: 1.4rem;
+      margin-bottom: 1rem;
     }
+
     h2 {
       margin-top: 2rem;
+      font-size: 1.2rem;
       border-left: 6px solid #4caf50;
       padding-left: 0.5rem;
     }
+
     .category {
-      background: white;
-      border-radius: 8px;
-      padding: 0.5rem 1rem;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));
+      gap: 10px;
+      background: #fff;
+      border-radius: 10px;
+      padding: 0.8rem;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
     }
+
     .weapon {
-      display: flex;
-      align-items: center;
-      gap: 0.6rem;
-      padding: 4px 0;
-    }
-    .weapon img {
-      width: 42px;
-      height: 42px;
-      border-radius: 4px;
-      object-fit: cover;
+      position: relative;
+      aspect-ratio: 1 / 1;
+      width: 100%;
+      cursor: pointer;
+      overflow: hidden;
+      border-radius: 10px;
       background: #ddd;
+      transition: transform 0.15s ease;
     }
+
+    .weapon:hover {
+      transform: scale(1.05);
+    }
+
+    .weapon img.weapon-icon {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .weapon img.checkmark {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+      pointer-events: none;
+    }
+
+    .weapon.checked img.checkmark {
+      opacity: 1;
+    }
+
+    #progress {
+      font-weight: bold;
+      text-align: center;
+      margin-top: 0.5rem;
+      font-size: 1rem;
+    }
+
     .progress-bar {
-      height: 20px;
+      height: 12px;
       background: #ddd;
       border-radius: 10px;
       overflow: hidden;
-      margin: 0.5rem 0 1rem 0;
+      margin: 0.5rem auto 1rem;
+      width: 80%;
     }
+
     .progress-inner {
       height: 100%;
       background: #4caf50;
       width: 0%;
       transition: width 0.3s ease;
     }
-    #progress {
-      font-weight: bold;
-      text-align: center;
-      margin-bottom: 0.5rem;
-    }
-    .filter-btns {
+
+    .data-btns {
       text-align: center;
       margin: 1rem 0;
     }
-    .filter-btns button {
-      margin: 0 0.3rem;
+
+    button {
+      margin: 0.3rem;
       padding: 0.4rem 0.8rem;
       border: none;
       border-radius: 6px;
-      background: #eee;
-      cursor: pointer;
-    }
-    .filter-btns button.active {
       background: #4caf50;
       color: white;
+      cursor: pointer;
+      font-size: 1rem;
+      letter-spacing: 1px;
+    }
+
+    button:hover {
+      background: #43a047;
+      transform: scale(1.05);
+    }
+
+    @media (max-width: 600px) {
+      h1 { font-size: 1.2rem; }
+      h2 { font-size: 1rem; }
+      button { font-size: 0.9rem; padding: 0.3rem 0.6rem; }
+      .category { gap: 6px; }
     }
   </style>
 </head>
-
 <body>
   <h1>ブキステッカー進捗管理ツール</h1>
-
   <div id="progress"></div>
   <div class="progress-bar"><div class="progress-inner" id="progress-bar-inner"></div></div>
 
-  <div class="filter-btns">
-    <button data-filter="all" class="active">すべて表示</button>
-    <button data-filter="unchecked">未チェックのみ</button>
-    <button data-filter="checked">チェック済のみ</button>
+  <div class="data-btns">
+    <button id="exportBtn">進捗をエクスポート</button>
+    <button id="importBtn">進捗をインポート</button>
+    <input type="file" id="importFile" accept=".json" style="display:none">
   </div>
 
   <div id="weapon-list"></div>
 
   <script>
-  // ====== ブキリスト（Ver.10.1.0） ======
   const weaponsByCategory = {
-    "シューター": ["52ガロン","52ガロンデコ","96ガロン","96ガロンデコ","H3リールガン","H3リールガンD","L3リールガン","L3リールガンD","N-ZAP85","N-ZAP89","もみじシューター","わかばシューター","オクタシューターレプリカ","オーダーシューターレプリカ","シャープマーカー","シャープマーカーネオ","ジェットスイーパー","ジェットスイーパーカスタム","スプラシューター","スプラシューターコラボ","スペースシューター","スペースシューターコラボ","ヒーローシューターレプリカ","プライムシューター","プライムシューターコラボ","プロモデラーMG","プロモデラーRG","ボトルガイザー","ボトルガイザーフォイル","ボールドマーカー","ボールドマーカーネオ"],
-    "ローラー": ["オーダーローラーレプリカ","カーボンローラー","カーボンローラーデコ","スプラローラー","スプラローラーコラボ","ダイナモローラー","ダイナモローラーテスラ","ワイドローラー","ワイドローラーコラボ","ヴァリアブルローラー","ヴァリアブルローラーフォイル"],
-    "チャージャー": ["14式竹筒銃・乙","14式竹筒銃・甲","R-PEN_5B","R-PEN_5H","スクイックリンα","スクイックリンβ","スプラスコープ","スプラスコープコラボ","スプラチャージャー","スプラチャージャーコラボ","ソイチューバー","ソイチューバーカスタム","リッター4K","リッター4Kカスタム"],
-    "ブラスター": ["Rブラスターエリート","Rブラスターエリートデコ","S-BLAST91","S-BLAST92","クラッシュブラスター","クラッシュブラスターネオ","ノヴァブラスター","ノヴァブラスターネオ","ホットブラスター","ホットブラスターカスタム","ラピッドブラスター","ラピッドブラスターデコ","ロングブラスター","ロングブラスターカスタム"],
-    "スピナー": ["スプラスピナー","スプラスピナーコラボ","ノーチラス47","ノーチラス79","ハイドラント","ハイドラントカスタム","バレルスピナー","バレルスピナーデコ","イグザミナー","イグザミナー・ヒュー","クーゲルシュライバー","クーゲルシュライバーヒュー"],
-    "マニューバー": ["ガエンFF","ガエンFFカスタム","クアッドホッパーブラック","クアッドホッパーホワイト","ケルビン525","ケルビン525デコ","スパッタリー","スパッタリーヒュー","スプラマニューバー","スプラマニューバーコラボ","デュアルスイーパー","デュアルスイーパーカスタム"],
-    "ワイパー": ["ジムワイパー","ジムワイパーヒュー","デンタルワイパースミ","デンタルワイパーミント","ドライブワイパー","ドライブワイパーデコ"],
-    "ストリンガー": ["LACT-450","LACT-450デコ","トライストリンガー","トライストリンガーコラボ","フルイドV","フルイドVカスタム"],
-    "シェルター": ["24式張替傘・乙","24式張替傘・甲","キャンピングシェルター","キャンピングシェルターソレーラ","スパイガジェット","スパイガジェットソレーラ","パラシェルター","パラシェルターソレーラ"],
-    "フデ": ["パブロ","パブロヒュー","フィンセント","フィンセントヒュー","ホクサイ","ホクサイヒュー"],
-    "スロッシャー": ["エクスプロッシャー","エクスプロッシャーカスタム","オーバーフロッシャー","オーバーフロッシャーデコ","スクリュースロッシャー","スクリュースロッシャーネオ","バケットスロッシャー","バケットスロッシャーデコ","ヒッセン","ヒッセンヒュー","モップリン","モップリンD"]
+    "シューター": ["わかばシューター", "スプラシューター", "プロモデラーMG"],
+    "ローラー": ["スプラローラー", "カーボンローラー"],
   };
 
   const weaponListEl = document.getElementById("weapon-list");
   const progressEl = document.getElementById("progress");
   const progressInner = document.getElementById("progress-bar-inner");
   let saved = JSON.parse(localStorage.getItem("stickers") || "{}");
-  let currentFilter = "all";
 
-  function updateProgress() {
+  function updateTotalProgress() {
     let total = 0, got = 0;
     for (const list of Object.values(weaponsByCategory)) {
       total += list.length;
@@ -135,51 +182,71 @@
       container.className = "category";
 
       for (const name of list) {
-        const isChecked = !!saved[name];
-        if (currentFilter === "unchecked" && isChecked) continue;
-        if (currentFilter === "checked" && !isChecked) continue;
-
         const div = document.createElement("div");
-        div.className = "weapon";
+        div.className = "weapon" + (saved[name] ? " checked" : "");
 
-        const img = document.createElement("img");
-        img.src = `images/weapons/${name}.png`;
-        img.alt = name;
-        img.onerror = () => { img.src = "images/weapons/noimage.png"; };
+        const icon = document.createElement("img");
+        icon.src = `images/weapons/${name}.png`;
+        icon.alt = name;
+        icon.className = "weapon-icon";
+        icon.onerror = () => { icon.src = "images/weapons/noimage.png"; };
 
-        const checkbox = document.createElement("input");
-        checkbox.type = "checkbox";
-        checkbox.checked = isChecked;
-        checkbox.addEventListener("change", () => {
-          saved[name] = checkbox.checked;
-          localStorage.setItem("stickers", JSON.stringify(saved));
-          updateProgress();
-        });
+        const check = document.createElement("img");
+        check.src = "images/check.png";
+        check.className = "checkmark";
 
-        const label = document.createElement("span");
-        label.textContent = name;
-
-        div.appendChild(img);
-        div.appendChild(checkbox);
-        div.appendChild(label);
+        div.appendChild(icon);
+        div.appendChild(check);
         container.appendChild(div);
+
+        div.addEventListener("click", () => {
+          saved[name] = !saved[name];
+          localStorage.setItem("stickers", JSON.stringify(saved));
+          div.classList.toggle("checked");
+          updateTotalProgress();
+        });
       }
       weaponListEl.appendChild(container);
     }
   }
 
-  document.querySelectorAll(".filter-btns button").forEach(btn => {
-    btn.addEventListener("click", () => {
-      document.querySelectorAll(".filter-btns button").forEach(b => b.classList.remove("active"));
-      btn.classList.add("active");
-      currentFilter = btn.getAttribute("data-filter");
-      renderList();
-    });
+  document.getElementById("exportBtn").addEventListener("click", () => {
+    const blob = new Blob([JSON.stringify(saved, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "splatoon3_sticker_progress.json";
+    a.click();
+    URL.revokeObjectURL(url);
   });
 
-  updateProgress();
+  const importFile = document.getElementById("importFile");
+  document.getElementById("importBtn").addEventListener("click", () => importFile.click());
+  importFile.addEventListener("change", (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = JSON.parse(e.target.result);
+        if (typeof data === "object") {
+          saved = data;
+          localStorage.setItem("stickers", JSON.stringify(saved));
+          updateTotalProgress();
+          renderList();
+          alert("インポート完了しました！");
+        } else {
+          alert("データ形式が不正です。");
+        }
+      } catch {
+        alert("JSONファイルの読み込みに失敗しました。");
+      }
+    };
+    reader.readAsText(file);
+  });
+
+  updateTotalProgress();
   renderList();
   </script>
 </body>
 </html>
-
