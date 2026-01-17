@@ -25,9 +25,7 @@
     #capture-area {
       background-color: #f2f4f5;
       padding: 10px;
-      /* 画像出力時にコンテンツが中央寄りになるよう調整（任意） */
-      /* min-height: 1000px; */
-      /* display: flex; flex-direction: column; justify-content: center; */
+      /* コンテンツが増えても大丈夫なように高さ指定はしない */
     }
 
     h1, h2, button {
@@ -167,7 +165,7 @@
   </div>
 
   <div class="data-btns">
-    <button id="imgExportBtn">📷 画像で保存 (2622x1026)</button>
+    <button id="imgExportBtn">📷 画像で保存</button>
   </div>
 
   <script>
@@ -242,28 +240,21 @@
     }
   }
 
-  // --- 画像エクスポート機能（修正版）---
+  // --- 画像エクスポート機能（全体書き出し版）---
   document.getElementById("imgExportBtn").addEventListener("click", () => {
     const target = document.getElementById("capture-area");
     const btn = document.getElementById("imgExportBtn");
     const originalText = btn.innerText;
     btn.innerText = "生成中...";
 
-    // 1. 指定サイズの空のキャンバスを作成します
-    const canvas = document.createElement('canvas');
-    canvas.width = 2622;
-    canvas.height = 1026;
-
-    // 2. html2canvasのオプションにこのキャンバスを渡します
+    // オプションからcanvas指定を削除し、ターゲット要素全体をキャプチャするように変更
     html2canvas(target, {
-      canvas: canvas,     // 作成したキャンバスを描画先に指定
-      scale: 1,           // カスタムキャンバスを使う場合はscaleを1にする
+      scale: 2, // 解像度を2倍にしてきれいに保存
       backgroundColor: "#f2f4f5", // 背景色を指定
-      useCORS: true       // 外部画像の読み込み許可
+      useCORS: true // 外部画像の読み込み許可
     }).then(canvas => {
-      // 生成されたキャンバス（2622x1026）をダウンロード
       const link = document.createElement("a");
-      link.download = "splatoon3_progress_2622x1026.png";
+      link.download = "splatoon3_progress.png";
       link.href = canvas.toDataURL("image/png");
       link.click();
       
